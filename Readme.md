@@ -1,5 +1,5 @@
-# HSynth
-A synthesizer that can take external input and operate on it as if it was an oscillator. I want to push my understanding of dsp and maths in general to its limits and implement approximations of operators that are as precise as possible.
+# DMod
+A strange plugin that enables you to add harmonics to a signal through modulating a simple delay. It really sounds like frequency (or rather phase) modulation when used on single oscillators. With this, you can modulate anything ! It comes at a cost though : 50ms of delay on the input signal and there's no anti-aliasing (yet). Careful to not clip with the modulator...
 
 ## Dependencies
 On windows, you just need Visual Studio 2022 and Juce.
