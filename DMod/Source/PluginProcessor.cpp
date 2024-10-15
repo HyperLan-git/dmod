@@ -8,10 +8,10 @@ juce::AudioProcessor::BusesProperties DModAudioProcessor::createProperties() {
 }
 
 DModAudioProcessor::DModAudioProcessor()
+    :
 #ifndef JucePlugin_PreferredChannelConfigurations
-    : AudioProcessor(createProperties())
+      AudioProcessor(createProperties()),
 #endif
-      ,
       modulation(new juce::AudioParameterFloat(
           {"Modulation", 1}, "Modulation amount", 0.f, 1.f, 1.f)) {
     addParameter(modulation);
@@ -106,7 +106,76 @@ void DModAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
     float *l = buffer.getWritePointer(0), *r = buffer.getWritePointer(1);
     const float *l2 = buffer.getReadPointer(2), *r2 = buffer.getReadPointer(3);
 
+    const float mod = *modulation;
+
     if (samples >= MAX_DELAY_SAMPLES) {
+        for (int b = 0; b < samples; b += MAX_DELAY_SAMPLES) {
+            if (samples - b < MAX_DELAY_SAMPLES) {
+                const int sz = samples - b;
+                std::memmove(block_l, block_l + sz,
+                             (MAX_DELAY_SAMPLES - sz) * sizeof(float));
+                std::memcpy(block_l + (MAX_DELAY_SAMPLES - sz), l + b,
+                            sz * sizeof(float));
+                std::memmove(block_r, block_r + sz,
+                             (MAX_DELAY_SAMPLES - sz) * sizeof(float));
+                std::memcpy(block_r + (MAX_DELAY_SAMPLES - sz), r + b,
+                            sz * sizeof(float));
+            } else {
+                std::memcpy(block_l, l + b, MAX_DELAY_SAMPLES * sizeof(float));
+                std::memcpy(block_r, r + b, MAX_DELAY_SAMPLES * sizeof(float));
+            }
+
+            for (int i = 0; i < MAX_DELAY_SAMPLES; i++) {
+                const float sampleChosen_l =
+                                (float)i +
+                                MAX_DELAY_SAMPLES * mod * l2[i] / 2.f -
+                                MAX_DELAY_SAMPLES / 2,
+                            sampleChosen_r =
+                                (float)i +
+                                MAX_DELAY_SAMPLES * mod * r2[i] / 2.f -
+                                MAX_DELAY_SAMPLES / 2;
+
+                const int fl = std::floor(sampleChosen_l),  // FL studio real
+                    fr = std::floor(sampleChosen_r);        // French
+                if (sampleChosen_l <= -MAX_DELAY_SAMPLES) {
+                    l[i] = prev_l[0];
+                } else if (sampleChosen_l >= MAX_DELAY_SAMPLES - 1) {
+                    l[i] = block_l[MAX_DELAY_SAMPLES - 1];
+                } else if (sampleChosen_l >= -1 && sampleChosen_l <= 0) {
+                    l[i] = prev_l[MAX_DELAY_SAMPLES - 1] *
+                               (1 - sampleChosen_l + fl) +
+                           block_l[0] * (sampleChosen_l - fl);
+                } else if (sampleChosen_l < -1) {
+                    l[i] = prev_l[fl + MAX_DELAY_SAMPLES] *
+                               (1 - sampleChosen_l + fl) +
+                           prev_l[fl + 1 + MAX_DELAY_SAMPLES] *
+                               (sampleChosen_l - fl);
+                } else {
+                    l[i] = block_l[fl] * (1 - sampleChosen_l + fl) +
+                           block_l[fl + 1] * (sampleChosen_l - fl);
+                }
+
+                if (sampleChosen_r <= -MAX_DELAY_SAMPLES) {
+                    r[i] = prev_r[0];
+                } else if (sampleChosen_r >= MAX_DELAY_SAMPLES - 1) {
+                    r[i] = block_r[MAX_DELAY_SAMPLES - 1];
+                } else if (sampleChosen_r >= -1 && sampleChosen_r <= 0) {
+                    r[i] = prev_r[MAX_DELAY_SAMPLES - 1] * (-sampleChosen_r) +
+                           block_r[0] * (sampleChosen_r + 1);
+                } else if (sampleChosen_r < -1) {
+                    r[i] = prev_r[fr + MAX_DELAY_SAMPLES] *
+                               (1 - sampleChosen_r + fr) +
+                           prev_r[fr + 1 + MAX_DELAY_SAMPLES] *
+                               (sampleChosen_r - fr);
+                } else {
+                    r[i] = block_r[fr] * (1 - sampleChosen_r + fr) +
+                           block_r[fr + 1] * (sampleChosen_r - fr);
+                }
+            }
+
+            std::memcpy(prev_l, block_l, MAX_DELAY_SAMPLES * sizeof(float));
+            std::memcpy(prev_r, block_r, MAX_DELAY_SAMPLES * sizeof(float));
+        }
         return;
     }
     const int sz = MAX_DELAY_SAMPLES - samples;
@@ -115,18 +184,20 @@ void DModAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
     std::memmove(block_r, block_r + samples, sz * sizeof(float));
     std::memcpy(block_r + sz, r, samples * sizeof(float));
 
-    const float mod = *modulation;
     for (int i = 0; i < samples; i++) {
-        float sampleChosen_l = (float)i +
-                               MAX_DELAY_SAMPLES * mod * l2[i] / 2.f -
-                               MAX_DELAY_SAMPLES / 2,
-              sampleChosen_r = (float)i +
-                               MAX_DELAY_SAMPLES * mod * r2[i] / 2.f -
-                               MAX_DELAY_SAMPLES / 2;
+        const float sampleChosen_l = (float)i +
+                                     MAX_DELAY_SAMPLES * mod * l2[i] / 2.f -
+                                     MAX_DELAY_SAMPLES / 2,
+                    sampleChosen_r = (float)i +
+                                     MAX_DELAY_SAMPLES * mod * r2[i] / 2.f -
+                                     MAX_DELAY_SAMPLES / 2;
+        const int fl = std::floor(sampleChosen_l),
+                  fr = std::floor(sampleChosen_r);
         if (sampleChosen_l >= samples) {
             l[i] = block_l[MAX_DELAY_SAMPLES - 1];
+        } else if (sampleChosen_l <= -MAX_DELAY_SAMPLES) {
+            l[i] = prev_l[0];
         } else if (sampleChosen_l <= -sz) {
-            const int fl = std::floor(sampleChosen_l);
             l[i] = prev_l[fl + MAX_DELAY_SAMPLES] * (1 - sampleChosen_l + fl) +
                    prev_l[fl + MAX_DELAY_SAMPLES + 1] * (sampleChosen_l - fl);
         } else {
@@ -137,12 +208,13 @@ void DModAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
 
         if (sampleChosen_r >= samples) {
             r[i] = block_r[MAX_DELAY_SAMPLES - 1];
+        } else if (sampleChosen_r <= -MAX_DELAY_SAMPLES) {
+            r[i] = prev_r[0];
         } else if (sampleChosen_r <= -sz) {
-            const int fr = std::floor(sampleChosen_r);
             r[i] = prev_r[fr + MAX_DELAY_SAMPLES] * (1 - sampleChosen_r + fr) +
                    prev_r[fr + MAX_DELAY_SAMPLES + 1] * (sampleChosen_r - fr);
         } else {
-            const int fr = std::floor(sampleChosen_l);
+            const int fr = std::floor(sampleChosen_r);
             r[i] = block_r[fr + sz] * (1 - sampleChosen_r + fr) +
                    block_r[fr + 1 + sz] * (sampleChosen_r - fr);
         }
