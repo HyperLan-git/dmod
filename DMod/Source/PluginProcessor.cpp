@@ -53,14 +53,22 @@ int DModAudioProcessor::getNumPrograms() { return 1; }
 
 int DModAudioProcessor::getCurrentProgram() { return 0; }
 
-void DModAudioProcessor::setCurrentProgram(int index) {}
+void DModAudioProcessor::setCurrentProgram(int index) { (void)index; }
 
-const juce::String DModAudioProcessor::getProgramName(int index) { return {}; }
+const juce::String DModAudioProcessor::getProgramName(int index) {
+    (void)index;
+    return {};
+}
 
 void DModAudioProcessor::changeProgramName(int index,
-                                           const juce::String& newName) {}
+                                           const juce::String& newName) {
+    (void)index;
+    (void)newName;
+}
 
 void DModAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
+    (void)sampleRate;
+    (void)samplesPerBlock;
 }
 
 void DModAudioProcessor::releaseResources() {}
@@ -135,8 +143,8 @@ void DModAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
                                 MAX_DELAY_SAMPLES * mod * r2[i] / 2.f -
                                 MAX_DELAY_SAMPLES / 2;
 
-                const int fl = std::floor(sampleChosen_l),  // FL studio real
-                    fr = std::floor(sampleChosen_r);        // French
+                const int fl = (int)std::floor(sampleChosen_l),  // FL studio real
+                    fr = (int)std::floor(sampleChosen_r);        // French
                 if (sampleChosen_l <= -MAX_DELAY_SAMPLES) {
                     l[i] = prev_l[0];
                 } else if (sampleChosen_l >= MAX_DELAY_SAMPLES - 1) {
@@ -191,8 +199,8 @@ void DModAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
                     sampleChosen_r = (float)i +
                                      MAX_DELAY_SAMPLES * mod * r2[i] / 2.f -
                                      MAX_DELAY_SAMPLES / 2;
-        const int fl = std::floor(sampleChosen_l),
-                  fr = std::floor(sampleChosen_r);
+        const int fl = (int)std::floor(sampleChosen_l),
+                  fr = (int)std::floor(sampleChosen_r);
         if (sampleChosen_l >= samples) {
             l[i] = block_l[MAX_DELAY_SAMPLES - 1];
         } else if (sampleChosen_l <= -MAX_DELAY_SAMPLES) {
@@ -201,7 +209,6 @@ void DModAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
             l[i] = prev_l[fl + MAX_DELAY_SAMPLES] * (1 - sampleChosen_l + fl) +
                    prev_l[fl + MAX_DELAY_SAMPLES + 1] * (sampleChosen_l - fl);
         } else {
-            const int fl = std::floor(sampleChosen_l);
             l[i] = block_l[fl + sz] * (1 - sampleChosen_l + fl) +
                    block_l[fl + 1 + sz] * (sampleChosen_l - fl);
         }
@@ -214,7 +221,6 @@ void DModAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
             r[i] = prev_r[fr + MAX_DELAY_SAMPLES] * (1 - sampleChosen_r + fr) +
                    prev_r[fr + MAX_DELAY_SAMPLES + 1] * (sampleChosen_r - fr);
         } else {
-            const int fr = std::floor(sampleChosen_r);
             r[i] = block_r[fr + sz] * (1 - sampleChosen_r + fr) +
                    block_r[fr + 1 + sz] * (sampleChosen_r - fr);
         }
@@ -229,10 +235,17 @@ juce::AudioProcessorEditor* DModAudioProcessor::createEditor() {
     return new DModAudioProcessorEditor(*this);
 }
 
-void DModAudioProcessor::getStateInformation(juce::MemoryBlock& destData) {}
+void DModAudioProcessor::getStateInformation(juce::MemoryBlock& destData) {
+    juce::MemoryOutputStream stream(destData, true);
+    stream.writeFloat(GET_PARAM_NORMALIZED(modulation));
+}
 
 void DModAudioProcessor::setStateInformation(const void* data,
-                                             int sizeInBytes) {}
+                                             int sizeInBytes) {
+    juce::MemoryInputStream stream(data, static_cast<size_t>(sizeInBytes),
+        false);
+    modulation->setValueNotifyingHost(stream.readFloat());
+}
 
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter() {
     return new DModAudioProcessor();

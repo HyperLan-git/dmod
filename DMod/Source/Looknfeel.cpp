@@ -16,7 +16,7 @@ void Looknfeel::drawRotarySlider(juce::Graphics& g, int x, int y, int width,
     juce::Rectangle<float> bounds =
         juce::Rectangle<int>(x, y, width, height).toFloat().reduced(10);
 
-    int radius = juce::jmin(bounds.getWidth(), bounds.getHeight()) / 2.0f;
+    float radius = juce::jmin(bounds.getWidth(), bounds.getHeight()) / 2.0f;
     float toAngle =
         rotaryStartAngle + sliderPos * (rotaryEndAngle - rotaryStartAngle);
     float lineW = juce::jmin(6.0f, radius * 0.5f);

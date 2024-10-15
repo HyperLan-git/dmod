@@ -6,6 +6,10 @@ class DModAudioProcessorEditor;
 
 #include "PluginEditor.hpp"
 
+#define GET_PARAM_NORMALIZED(param) (param->convertTo0to1(*param))
+#define SET_PARAM_NORMALIZED(param, value) \
+    param->setValueNotifyingHost(param->convertTo0to1(value))
+
 // 100ms so 3 oscillations at 30hz or 100 at 1khz
 #define MAX_DELAY_SAMPLES 4410
 
