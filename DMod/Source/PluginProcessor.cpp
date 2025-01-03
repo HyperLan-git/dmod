@@ -15,6 +15,7 @@ DModAudioProcessor::DModAudioProcessor()
       modulation(new juce::AudioParameterFloat(
           {"Modulation", 1}, "Modulation amount", 0.f, 1.f, 1.f)) {
     addParameter(modulation);
+    setLatencySamples(MAX_DELAY_SAMPLES / 2);
 }
 
 DModAudioProcessor::~DModAudioProcessor() {}

@@ -8,7 +8,7 @@ class DModAudioProcessor;
 #include "KnobComponent.hpp"
 
 // TODO indication of volume level and clipping
-
+// XXX maybe an oscilloscope in the plugin could be good
 class DModAudioProcessorEditor : public juce::AudioProcessorEditor {
    public:
     DModAudioProcessorEditor(DModAudioProcessor& editor);
